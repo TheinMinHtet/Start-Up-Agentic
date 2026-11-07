@@ -75,8 +75,12 @@ export default function SpecializedAgentsPage() {
         async function startDebate() {
             setIsThinking(true);
             try {
+                const storedConcept = typeof window !== 'undefined' ? localStorage.getItem('agentic:refinedConcept') : null;
+                const parsedConcept = storedConcept ? JSON.parse(storedConcept) : null;
+                const effectiveConcept = refinedConcept || parsedConcept;
+
                 const isPhysical = (() => {
-                    const text = `${refinedConcept?.improved_summary || ''} ${businessInfo?.business_type || ''} ${businessInfo?.core_painpoint || ''} ${startupIdea || ''}`.toLowerCase();
+                    const text = `${effectiveConcept?.improved_summary || ''} ${businessInfo?.business_type || ''} ${businessInfo?.core_painpoint || ''} ${startupIdea || ''}`.toLowerCase();
                     const physicalKeywords = ['physical', 'food', 'beverage', 'retail', 'hardware', 'clothing', 'fashion', 'cosmetics', 'snack', 'drink', 'manufacturing', 'cogs', 'packaging', 'factory', 'goods', 'product', 'restaurant', 'cafe', 'store'];
                     const digitalKeywords = ['saas', 'software', 'app', 'edtech', 'platform', 'ai', 'cloud', 'portal', 'token', 'website'];
                     const hasPhysical = physicalKeywords.some(kw => text.includes(kw));
@@ -84,17 +88,17 @@ export default function SpecializedAgentsPage() {
                     return hasPhysical && !hasDigital;
                 })();
 
-                const derivedName = refinedConcept?.companyName || businessInfo?.company_name || businessInfo?.title || (startupIdea ? startupIdea.split(' ').slice(0, 3).join(' ').replace(/[^a-zA-Z0-9 ]/g, '') : null) || (isPhysical ? "Myanmar Craft Consumer Goods" : "EduBot Myanmar");
+                const derivedName = effectiveConcept?.companyName || businessInfo?.company_name || businessInfo?.title || (startupIdea ? startupIdea.split(' ').slice(0, 3).join(' ').replace(/[^a-zA-Z0-9 ]/g, '') : null) || (isPhysical ? "Myanmar Craft Consumer Goods" : "EduBot Myanmar");
 
                 // Initial input to graph
                 const conceptData = {
                     companyName: derivedName,
-                    targetCountry: refinedConcept?.target_country || businessInfo?.target_country || "Myanmar",
+                    targetCountry: effectiveConcept?.target_country || businessInfo?.target_country || "Myanmar",
                     location: businessInfo?.location || "Yangon, Myanmar",
                     businessType: businessInfo?.business_type || (isPhysical ? "Physical Product / Retail" : "EdTech / SaaS"),
                     initialCapital: isPhysical ? 10000000 : 8000000,
                     monthlyBurnRate: isPhysical ? 2500000 : 1500000,
-                    description: refinedConcept?.improved_summary || businessInfo?.core_painpoint || startupIdea || (isPhysical ? "Locally sourced quality physical products with robust supply chain distribution." : "AI-powered digital platform solving local user pain points across Myanmar."),
+                    description: effectiveConcept?.improved_summary || businessInfo?.core_painpoint || startupIdea || (isPhysical ? "Locally sourced quality physical products with robust supply chain distribution." : "AI-powered digital platform solving local user pain points across Myanmar."),
                     apiKey: getApiKey?.()
                 };
 

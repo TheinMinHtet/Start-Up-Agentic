@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useLanguage } from './LanguageContext';
 import {
   evaluateIdeaAsync,
@@ -121,7 +120,6 @@ const DEFAULT_MARKETING_FALLBACK = {
 };
 
 export function WorkflowProvider({ children }) {
-  const supabase = useMemo(() => createClient(), []);
   const { language } = useLanguage();
   const [rawUserIdea, setRawUserIdea] = useState('');
   const [validationResult, setValidationResult] = useState(null);
@@ -320,22 +318,21 @@ export function WorkflowProvider({ children }) {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) {
-        console.warn(`Skipping ${table} save because no authenticated user was found.`);
-        return;
-      }
-
       const payload = {
         idea_id: ideaId,
-        user_id: user.id,
         ...mapOutput(output),
         raw_output: output
       };
 
-      const { error } = await supabase.from(table).insert(payload);
-      if (error) {
-        console.error(`Failed to save ${table}:`, error);
+      const res = await fetch('/api/agent-output', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table, payload }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.error(`Failed to save ${table}:`, errJson.error || res.statusText);
       }
     } catch (err) {
       console.error(`Failed to persist agent output for ${table}:`, err);
@@ -969,14 +966,21 @@ export function WorkflowProvider({ children }) {
         { role: 'user', content: userMessage }
       ];
       if (response.reply_message) {
-          newHistory.push({ role: 'model', content: response.reply_message });
+        newHistory.push({
+          role: 'model',
+          content: response.reply_message,
+          options: response.options || [],
+          current_step: response.current_step
+        });
       }
       
       setOnboardingChatHistory(newHistory);
 
-      if (response.requirements_met_count !== undefined) {
-          setOnboardingProgress(response.requirements_met_count);
-      }
+      // Advance progress: either from current_step - 1, or requirements_met_count
+      const calculatedProgress = response.is_complete
+        ? 6
+        : (response.current_step ? Math.max(0, response.current_step - 1) : (response.requirements_met_count || 0));
+      setOnboardingProgress(calculatedProgress);
 
       if (response.is_complete) {
         updateStartupIdea(response.startup_idea_summary);

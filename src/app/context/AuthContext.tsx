@@ -1,15 +1,24 @@
 'use client';
 
-import type { User } from '@supabase/supabase-js';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import React, { createContext, useContext } from 'react';
+import { SessionProvider, useSession, signOut } from 'next-auth/react';
 
-type AuthContextValue = {
+export interface AppUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  user_metadata?: {
+    username?: string;
+  };
+}
+
+interface AuthContextValue {
   isAuthenticated: boolean;
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   logout: () => Promise<void>;
-};
+}
 
 const AuthContext = createContext<AuthContextValue>({
   isAuthenticated: false,
@@ -22,49 +31,44 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+function AuthConsumer({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
+  const loading = status === 'loading';
 
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data.user);
-      setLoading(false);
-    }).catch((err) => {
-      console.error('Failed to retrieve user session:', err);
-      if (mounted) {
-        setLoading(false);
+  const user: AppUser | null = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        user_metadata: {
+          username: session.user.name || session.user.email?.split('@')[0],
+        },
       }
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, [supabase]);
+    : null;
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Failed to sign out from Supabase:', err);
-    } finally {
-      setUser(null);
-    }
+    await signOut({ callbackUrl: '/login' });
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated: Boolean(user), user, loading, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: Boolean(session?.user),
+        user,
+        loading,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthConsumer>{children}</AuthConsumer>
+    </SessionProvider>
   );
 }

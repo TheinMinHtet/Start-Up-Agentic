@@ -1,6 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: [
+    '@langchain/core',
+    '@langchain/google-genai',
+    '@langchain/langgraph',
+    'langchain',
+    '@neondatabase/serverless',
+    'bcryptjs'
+  ],
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       config.plugins.push(

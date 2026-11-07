@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWorkflow } from '../context/WorkflowContext';
-import { createClient } from '@/lib/supabase/client';
 import MarkdownPreviewer from '../components/MarkdownPreviewer';
 import { useLanguage } from '../context/LanguageContext';
 import RoadmapCalendar from '../components/RoadmapCalendar';
@@ -137,7 +136,6 @@ export default function DashboardPage() {
     const searchParams = useSearchParams();
     const { language, t } = useLanguage();
     const ideaId = searchParams.get('ideaId');
-    const supabase = useMemo(() => createClient(), []);
     const { user } = useAuth();
     const [pastIdeas, setPastIdeas] = useState([]);
     const [historyExpanded, setHistoryExpanded] = useState(false);
@@ -145,17 +143,19 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchHistory = async () => {
             if (user) {
-                const { data, error } = await supabase
-                    .from('agent_refinements')
-                    .select('idea_id, created_at, improved_summary, concept')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
-                if (error) { console.error('History fetch error:', error); return; }
-                if (data) setPastIdeas(data);
+                try {
+                    const res = await fetch('/api/agent-output?history=true');
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.data) setPastIdeas(json.data);
+                    }
+                } catch (error) {
+                    console.error('History fetch error:', error);
+                }
             }
         };
         fetchHistory();
-    }, [user, supabase]);
+    }, [user]);
 
     const {
         businessInfo,
@@ -607,24 +607,12 @@ export default function DashboardPage() {
 
         const fetchSingle = async (table) => {
             try {
-                const { data, error } = await supabase
-                    .from(table)
-                    .select('*')
-                    .eq('idea_id', ideaId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (error) {
-                    if (error.code !== 'PGRST116') {
-                        console.warn(`[Supabase Note] Table ${table} info:`, error.message || error.code || JSON.stringify(error) || error);
-                    }
-                    return null;
-                }
-
-                return data;
+                const res = await fetch(`/api/agent-output?table=${table}&ideaId=${ideaId}`);
+                if (!res.ok) return null;
+                const json = await res.json();
+                return json.data || null;
             } catch (err) {
-                console.warn(`[Supabase Note] Fetch exception for table ${table}:`, err?.message || err);
+                console.warn(`[Neon Database Note] Fetch exception for table ${table}:`, err?.message || err);
                 return null;
             }
         };
@@ -734,7 +722,6 @@ export default function DashboardPage() {
         };
     }, [
         ideaId,
-        supabase,
         setRefinedConcept,
         setMarketResearch,
         setFinanceModel,

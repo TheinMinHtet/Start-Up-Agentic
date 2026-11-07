@@ -50,7 +50,7 @@ CRITICAL GUARDRAILS:
 export async function runWebsiteAgent(refinedConcept, businessInfo, brandPackage, apiKey, language) {
   const model = new ChatGoogleGenerativeAI({
     apiKey: apiKey,
-    model: 'gemini-3.1-flash-lite',
+    model: 'gemini-3-flash-preview',
     maxOutputTokens: 2048,
   });
 

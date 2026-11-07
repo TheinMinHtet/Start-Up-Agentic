@@ -9,7 +9,7 @@ async function invokeAgentLLM(apiKey, systemPrompt, userContent, fallbackMessage
     try {
         const model = new ChatGoogleGenerativeAI({
             apiKey: apiKey,
-            model: 'gemini-3.1-flash-lite',
+            model: 'gemini-3-flash-preview',
             maxOutputTokens: 1024,
             temperature: 0.7
         });
@@ -48,7 +48,7 @@ async function generateDynamicTradeoffOptions(apiKey, concept, simRes) {
     try {
         const model = new ChatGoogleGenerativeAI({
             apiKey: apiKey,
-            model: 'gemini-3.1-flash-lite',
+            model: 'gemini-3-flash-preview',
             maxOutputTokens: 512,
             temperature: 0.7
         });

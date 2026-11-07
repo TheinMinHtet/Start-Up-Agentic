@@ -8,7 +8,7 @@ import { draftInvestorEmailTool } from './tools/executionTools.js';
 export async function runEmailDraftingAgent({ recipientName, recipientEmail, customFocus, docTitle, docContent, businessName, language, apiKey }) {
     const model = new ChatGoogleGenerativeAI({
         apiKey: process.env.UPDATE_AGENT_API_KEY || process.env.NEXT_PUBLIC_UPDATE_AGENT_API_KEY || apiKey || process.env.NEXT_PUBLIC_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY,
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-3-flash-preview',
         maxOutputTokens: 2048,
         temperature: 0.2
     }).bindTools([draftInvestorEmailTool]);

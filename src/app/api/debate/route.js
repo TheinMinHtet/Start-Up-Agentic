@@ -5,6 +5,12 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { state, threadConfig } = body;
+
+    // Ensure server-side Google API key is supplied
+    if (state?.business_concept && !state.business_concept.apiKey) {
+      state.business_concept.apiKey = process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+    }
+
     const result = await debateGraph.invoke(state, threadConfig);
     return NextResponse.json(result);
   } catch (error) {

@@ -166,7 +166,7 @@ Output Requirements:
 export async function runAgenticUpdateAgent(editedTab, editedValues, currentBlueprint, businessInfo, apiKey, language) {
   const model = new ChatGoogleGenerativeAI({
     apiKey: apiKey,
-    model: 'gemini-3.1-flash-lite',
+    model: 'gemini-3-flash-preview',
     maxOutputTokens: 2048,
   });
 

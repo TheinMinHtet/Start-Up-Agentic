@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { signIn } from 'next-auth/react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -12,7 +12,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
   const { language, t } = useLanguage();
-  const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -30,15 +29,20 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const res = await signIn('credentials', {
         email,
         password,
+        redirect: false,
       });
 
       setIsSubmitting(false);
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (res?.error) {
+        setErrorMessage(
+          language === 'en'
+            ? 'Invalid email or password.'
+            : 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မှားယွင်းနေပါသည်။'
+        );
         return;
       }
 
@@ -46,25 +50,10 @@ export default function LoginPage() {
       router.refresh();
     } catch (err: any) {
       setIsSubmitting(false);
-      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || 
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_project_url') || 
-        process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
-
-      if (isPlaceholder) {
-        setErrorMessage(
-          language === 'en'
-            ? 'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.'
-            : 'Supabase သတ်မှတ်ချက် မပြည့်စုံပါ။ env file တွင် NEXT_PUBLIC_SUPABASE_URL နှင့် NEXT_PUBLIC_SUPABASE_ANON_KEY ကို ဖြည့်စွက်ပေးပါ။'
-        );
-      } else if (err instanceof TypeError || (err?.message && err.message.includes('Failed to fetch'))) {
-        setErrorMessage(
-          language === 'en'
-            ? 'Network error: Failed to connect to Supabase. Please check your internet connection or ad blocker settings.'
-            : 'ကွန်ရက်ချိတ်ဆက်မှု ပြဿနာ- Supabase သို့ မချိတ်ဆက်နိုင်ပါ။ သင်၏ အင်တာနက်ချိတ်ဆက်မှု သို့မဟုတ် ad blocker setting ကို စစ်ဆေးပါ။'
-        );
-      } else {
-        setErrorMessage(err?.message || (language === 'en' ? 'An unexpected error occurred.' : 'မမျှော်လင့်ထားသော အမှားတစ်ခု ဖြစ်ပွားခဲ့သည်။'));
-      }
+      setErrorMessage(
+        err?.message ||
+          (language === 'en' ? 'An unexpected error occurred.' : 'မမျှော်လင့်ထားသော အမှားတစ်ခု ဖြစ်ပွားခဲ့သည်။')
+      );
     }
   };
 
@@ -100,18 +89,26 @@ export default function LoginPage() {
               className="dark-input"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder={language === 'en' ? "Enter your password" : "စကားဝှက်ထည့်ပါ"}
+              placeholder="••••••••"
               required
             />
           </div>
-          {errorMessage && <p className="dark-error">{errorMessage}</p>}
-          <button type="submit" className="button-primary-dark" disabled={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : 'Continue to home'}
-            <ArrowRight size={18} />
+
+          {errorMessage ? <p className="auth-error-dark">{errorMessage}</p> : null}
+
+          <button
+            type="submit"
+            className="btn-accent-glow full-width"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (language === 'en' ? 'Signing in...' : 'ဝင်ရောက်နေသည်...') : (language === 'en' ? 'Sign In' : 'အကောင့်ဝင်ရန်')}
+            <ArrowRight size={16} />
           </button>
         </form>
-        <p className="dark-switch-copy">
-          New here? <Link href="/register">Create an account</Link>
+
+        <p className="auth-switch-dark">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="dark-link">Create one</Link>
         </p>
       </div>
     </section>

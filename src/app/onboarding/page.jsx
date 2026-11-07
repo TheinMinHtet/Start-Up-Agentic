@@ -6,7 +6,6 @@ import { useWorkflow } from '../context/WorkflowContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Bot, Send, ArrowRight, User, Globe, MapPin, Layers, History, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 
 const ONLINE_CATEGORIES = [
     "Software & Tech (SaaS, Apps, AI)", "E-commerce & Dropshipping", "Digital Content & Media",
@@ -64,14 +63,9 @@ export default function OnboardingPage() {
     // Fetch idea history from agent_refinements table
     useEffect(() => {
         if (!user?.id) return;
-        const supabase = createClient();
-        supabase
-            .from('agent_refinements')
-            .select('idea_id, concept, improved_summary, created_at')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .then(({ data, error }) => {
-                if (error) { console.error('History fetch error:', error); return; }
+        fetch('/api/agent-output?history=true')
+            .then(res => res.json())
+            .then(({ data }) => {
                 if (data) {
                     // Deduplicate by idea_id (keep latest per idea)
                     const seen = new Set();
@@ -82,7 +76,8 @@ export default function OnboardingPage() {
                     });
                     setPastIdeas(unique);
                 }
-            });
+            })
+            .catch(err => console.error('History fetch error:', err));
     }, [user?.id]);
 
     const handleLocationSelect = (loc) => {
@@ -107,11 +102,12 @@ export default function OnboardingPage() {
         }
     };
 
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (!chatInput.trim() || isTyping) return;
+    const handleSendMessage = async (e, textOverride) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const textToSend = typeof textOverride === 'string' ? textOverride : chatInput;
+        if (!textToSend.trim() || isTyping) return;
 
-        const message = chatInput;
+        const message = textToSend.trim();
         setChatInput('');
         setIsTyping(true);
 
@@ -119,10 +115,10 @@ export default function OnboardingPage() {
             const response = await executeOnboardingChat(message, location, category);
             if (response.is_complete) {
                 setIsComplete(true);
-                setActiveStep('planning');
+                setActiveStep('specialized-agents');
                 setTimeout(() => {
-                    router.push('/planning');
-                }, 2500);
+                    router.push('/specialized-agents');
+                }, 2000);
             }
         } catch (e) {
             console.error(e);
@@ -203,7 +199,7 @@ export default function OnboardingPage() {
                                         target_country: "Myanmar"
                                     });
                                 }
-                                setActiveStep('planning');
+                                setActiveStep('specialized-agents');
                                 router.push('/specialized-agents');
                             }}
                             style={{
@@ -416,6 +412,49 @@ export default function OnboardingPage() {
                                                 whiteSpace: 'pre-wrap'
                                             }}>
                                                 {msg.content}
+
+                                                {/* Render interactive choices for the latest model message */}
+                                                {isModel && i === onboardingChatHistory.length - 1 && msg.options && msg.options.length > 0 && !isComplete && (
+                                                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-accent)', fontWeight: 700 }}>
+                                                            {language === 'en' ? 'Quick Options:' : 'ရွေးချယ်ရန် အကြံပြုချက်များ-'}
+                                                        </span>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                            {msg.options.map((opt, optIdx) => (
+                                                                <button
+                                                                    key={optIdx}
+                                                                    type="button"
+                                                                    disabled={isTyping}
+                                                                    onClick={() => handleSendMessage(null, opt)}
+                                                                    style={{
+                                                                        padding: '8px 14px',
+                                                                        borderRadius: '999px',
+                                                                        background: 'rgba(0, 242, 254, 0.08)',
+                                                                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                                                                        color: '#00f2fe',
+                                                                        fontSize: '13px',
+                                                                        fontWeight: 500,
+                                                                        cursor: isTyping ? 'not-allowed' : 'pointer',
+                                                                        textAlign: 'left',
+                                                                        transition: 'all 0.2s',
+                                                                    }}
+                                                                    onMouseEnter={e => {
+                                                                        e.currentTarget.style.background = 'rgba(0, 242, 254, 0.2)';
+                                                                        e.currentTarget.style.borderColor = '#00f2fe';
+                                                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                    }}
+                                                                    onMouseLeave={e => {
+                                                                        e.currentTarget.style.background = 'rgba(0, 242, 254, 0.08)';
+                                                                        e.currentTarget.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+                                                                        e.currentTarget.style.transform = 'none';
+                                                                    }}
+                                                                >
+                                                                    {opt}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
